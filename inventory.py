@@ -1,5 +1,6 @@
 from typing import Iterable, Iterator
 from vegetable import *
+import pickle
 
 class ItemAlreadyExists(Exception):
     pass
@@ -13,7 +14,14 @@ class ItemIterable(Iterable):
 
     def __iter__(self) -> Iterator:
         return ItemIterator(self._item_list)
+    
+def load_pickle(filename):
+    with open(filename, 'rb') as file:
+        return pickle.load(file)
 
+def dump_pickle(filename, item):
+    with open(filename, 'wb') as file:
+        pickle.dump(item, file)
 
 class ItemIterator(Iterator):
     def __init__(self, item_list):
@@ -28,10 +36,9 @@ class ItemIterator(Iterator):
         self._index += 1
         return item
 
-
 class Inventory:
     def __init__(self):
-        self._all_items = []
+        self._all_items = dump_pickle('all_items.pkl', [])
         self._items_available = []
 
     def view_all_items(self):
@@ -39,12 +46,15 @@ class Inventory:
         return list(iterable)
 
     def add_item(self, item):
+        self._all_items = load_pickle('all_items.pkl')
         if item._name.lower() not in [items._name.lower() for items in self._all_items]:
             self._all_items.append(item)
         else:
             raise ItemAlreadyExists("The item already exists in the inventory.")
+        dump_pickle('all_items.pkl', self._all_items)
         
     def update_item(self, item = None, type = None, price = None, stock = None):
+        self._all_items = load_pickle('all_items.pkl')
         item_address = None
         for c_item in self._all_items:
             if c_item._name.lower() == item.lower():
@@ -52,17 +62,19 @@ class Inventory:
                 break
         if item_address:
             item_address.update(item, type, price, stock)
+        dump_pickle('all_items.pkl', self._all_items)
     
     def update_today_picks(self, item):
         for i in self._all_items:
             if item.lower() == i._name.lower():
                 self._items_available.append(i)
-        raise ItemNotFound("Item not found.")
+                break  # You need to exit the loop when the item is found.
+        else:
+            raise ItemNotFound("Item not found.")
     
     def view_available_items(self):
         iterable = ItemIterable(self._items_available)
         return list(iterable)
-        
 
 # Example usage:
 if __name__ == "__main__":
